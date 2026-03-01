@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Miaoshou ERP - Custom Column (clickable toast final)
 // @namespace    https://erp.91miaoshou.com/
-// @version      10.0
+// @version      11.0
 // @description  Add custom column next to "申报价格"; click to fetch USD price from local server and show toast
 // @match        https://erp.91miaoshou.com/pddkj_choice/item/item*
 // @run-at       document-idle
@@ -20,6 +20,9 @@
   const COL_TITLE = '自定义列';
 
   const PRICE_SERVER_URL = 'http://127.0.0.1:18234/price';
+
+  // Cache fetched prices: sku_id → '$xx.xx'
+  const priceCache = new Map();
 
   const HDR_MARK = 'data-tm-vt-custom-hdr';
   const CELL_MARK = 'data-tm-vt-custom-cell';
@@ -214,9 +217,17 @@
         newCell.setAttribute(CELL_MARK, '1');
 
         const inners = Array.from(newCell.querySelectorAll('.sku-list__item-inner'));
+        // Read SKU IDs from the row to restore cached prices
+        const skuCell = row.children[colIndexMap.sku];
+        const skuInners = skuCell ? Array.from(skuCell.querySelectorAll('.sku-list__item-inner')) : [];
         inners.forEach((inner, i) => {
-          const key = (inner.innerText || '') + ':' + i;
-          inner.innerText = stableRandomFromString(key) + '%';
+          const skuId = skuInners[i] ? (skuInners[i].innerText || '').trim() : '';
+          if (skuId && priceCache.has(skuId)) {
+            inner.innerText = priceCache.get(skuId);
+          } else {
+            const key = (inner.innerText || '') + ':' + i;
+            inner.innerText = stableRandomFromString(key) + '%';
+          }
           inner.style.cursor = 'pointer';
         });
 
@@ -319,11 +330,15 @@
     toastSet('查询价格中… 产品ID: ' + productId);
 
     // Fetch price from local server
+    const clickedInner = inner;
     fetchPrice(productId, skc, sku, platform, function(result) {
       if (result.error) {
         toastSet('产品ID: ' + productId + ' / SKC: ' + skc + ' / SKU: ' + sku + ' / 平台SKU: ' + platform + ' / ⚠️ ' + result.error);
       } else {
         toastSet('产品ID: ' + productId + ' / SKC: ' + skc + ' / SKU: ' + sku + ' / 平台SKU: ' + platform + ' / 💰 USD ' + result.usd_price);
+        var priceText = '$' + result.usd_price;
+        priceCache.set(sku, priceText);
+        clickedInner.textContent = priceText;
       }
     });
   }
