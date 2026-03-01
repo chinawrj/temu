@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name         Miaoshou ERP - Custom Column (clickable toast final)
 // @namespace    https://erp.91miaoshou.com/
-// @version      9.0
-// @description  Add custom column next to "申报价格"; keep in sync on expand; make each % clickable and show SKC/SKU/平台SKU toast
+// @version      10.0
+// @description  Add custom column next to "申报价格"; click to fetch USD price from local server and show toast
 // @match        https://erp.91miaoshou.com/pddkj_choice/item/item*
 // @run-at       document-idle
 // @grant        unsafeWindow
+// @grant        GM_xmlhttpRequest
+// @connect      127.0.0.1
 // ==/UserScript==
 
 (function () {
@@ -16,6 +18,8 @@
 
   const ANCHOR_TEXT = '申报价格';
   const COL_TITLE = '自定义列';
+
+  const PRICE_SERVER_URL = 'http://127.0.0.1:18234/price';
 
   const HDR_MARK = 'data-tm-vt-custom-hdr';
   const CELL_MARK = 'data-tm-vt-custom-cell';
@@ -227,6 +231,45 @@
     return replacedOrInserted;
   }
 
+  // ── Fetch USD price from local server ──
+  function fetchPrice(productId, skc, sku, platformSku, callback) {
+    const payload = JSON.stringify({
+      product_id: productId,
+      skc_id: skc,
+      sku_id: sku,
+      platform_sku: platformSku,
+    });
+    try {
+      GM_xmlhttpRequest({
+        method: 'POST',
+        url: PRICE_SERVER_URL,
+        headers: { 'Content-Type': 'application/json' },
+        data: payload,
+        timeout: 5000,
+        onload: function(resp) {
+          try {
+            callback(JSON.parse(resp.responseText));
+          } catch(e) {
+            callback({ error: 'JSON parse error' });
+          }
+        },
+        onerror: function() { callback({ error: '服务器连接失败' }); },
+        ontimeout: function() { callback({ error: '请求超时' }); },
+      });
+    } catch(e) {
+      // Fallback: plain fetch (may be blocked by CORS in some contexts)
+      log('GM_xmlhttpRequest unavailable, using fetch', e);
+      fetch(PRICE_SERVER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+      })
+        .then(r => r.json())
+        .then(data => callback(data))
+        .catch(() => callback({ error: '服务器连接失败' }));
+    }
+  }
+
   // ── Event delegation via window (survives DOM recycling & micro-frontend isolation) ──
   function handleCustomCellClick(e) {
     const target = e.target;
@@ -273,7 +316,16 @@
     }
 
     log('delegation click', {idx, skc, sku, platform, productId});
-    toastSet('产品ID: ' + productId + ' / SKC ID: ' + skc + ' / SKU ID: ' + sku + ' / \u5e73\u53f0SKU: ' + platform);
+    toastSet('查询价格中… 产品ID: ' + productId);
+
+    // Fetch price from local server
+    fetchPrice(productId, skc, sku, platform, function(result) {
+      if (result.error) {
+        toastSet('产品ID: ' + productId + ' / SKC: ' + skc + ' / SKU: ' + sku + ' / 平台SKU: ' + platform + ' / ⚠️ ' + result.error);
+      } else {
+        toastSet('产品ID: ' + productId + ' / SKC: ' + skc + ' / SKU: ' + sku + ' / 平台SKU: ' + platform + ' / 💰 USD ' + result.usd_price);
+      }
+    });
   }
 
   // Attach on window (capture phase) — bypasses any document proxy from micro-frontends
