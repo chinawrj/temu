@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Miaoshou ERP - Custom Column (clickable toast final)
 // @namespace    https://erp.91miaoshou.com/
-// @version      12.0
+// @version      13.0
 // @description  Add custom column next to "申报价格"; click to fetch USD price from local server and show toast
 // @match        https://erp.91miaoshou.com/pddkj_choice/item/item*
 // @run-at       document-idle
@@ -17,7 +17,7 @@
   const LOG_PREFIX = '[TM-VT-CLICK]';
 
   const ANCHOR_TEXT = '申报价格';
-  const COL_TITLE = '自定义列';
+  const COL_TITLE = '周董AI助手';
 
   const PRICE_SERVER_URL = 'http://127.0.0.1:18234/price';
 
