@@ -13,7 +13,6 @@ POST /price
 import argparse
 import hashlib
 import json
-import os
 import struct
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -22,7 +21,6 @@ HOST = "127.0.0.1"
 PORT = 18234
 
 DUMP_ENABLED = True
-DUMP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dumps")
 
 REQUIRED_FIELDS = ["product_id", "skc_id", "sku_id", "platform_sku"]
 
@@ -57,23 +55,16 @@ class PriceHandler(BaseHTTPRequestHandler):
             self._dump_response(code, data)
 
     def _dump_response(self, code, data):
-        try:
-            os.makedirs(DUMP_DIR, exist_ok=True)
-            ts = time.strftime("%Y%m%d_%H%M%S")
-            ms = int(time.time() * 1000) % 1000
-            filename = f"{ts}_{ms:03d}_{code}.json"
-            record = {
-                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S") + f".{ms:03d}",
-                "method": self.command,
-                "path": self.path,
-                "status": code,
-                "request": getattr(self, "_request_body", None),
-                "response": data,
-            }
-            with open(os.path.join(DUMP_DIR, filename), "w", encoding="utf-8") as f:
-                json.dump(record, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"[PriceServer] dump error: {e}")
+        ms = int(time.time() * 1000) % 1000
+        record = {
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S") + f".{ms:03d}",
+            "method": self.command,
+            "path": self.path,
+            "status": code,
+            "request": getattr(self, "_request_body", None),
+            "response": data,
+        }
+        print(json.dumps(record, ensure_ascii=False), flush=True)
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -137,7 +128,7 @@ def main():
     DUMP_ENABLED = not args.no_dump
 
     server = HTTPServer((HOST, PORT), PriceHandler)
-    dump_status = f"dumps → {DUMP_DIR}" if DUMP_ENABLED else "dumps disabled"
+    dump_status = "dump → stdout" if DUMP_ENABLED else "dump disabled"
     print(f"🚀 Price Server listening on http://{HOST}:{PORT}/price  ({dump_status})")
     try:
         server.serve_forever()

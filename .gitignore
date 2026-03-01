@@ -8,4 +8,3 @@ __pycache__/
 # Runtime state / temp files
 .github/skills/chrome-proxy-launcher/.launcher_pids.json
 .github/skills/zhanfu-proxy-scanner/proxy_cache.json
-server/dumps/
