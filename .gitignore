@@ -1,0 +1,10 @@
+# Chrome user data directories (large, session-specific)
+.github/skills/chrome-proxy-launcher/profiles/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Runtime state / temp files
+.github/skills/chrome-proxy-launcher/.launcher_pids.json
+.github/skills/zhanfu-proxy-scanner/proxy_cache.json
