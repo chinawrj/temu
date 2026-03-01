@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Miaoshou ERP - Custom Column (clickable toast final)
 // @namespace    https://erp.91miaoshou.com/
-// @version      15.0
+// @version      16.0
 // @description  Add custom column next to "申报价格"; click to fetch USD price from local server and show toast
 // @match        https://erp.91miaoshou.com/pddkj_choice/item/item*
 // @run-at       document-idle
@@ -336,18 +336,20 @@
     const customCell = target.closest('[' + CELL_MARK + ']');
     if (!customCell) return;
 
-    // Proxy expand/collapse button clicks to the original price cell
+    // Proxy expand/collapse button clicks to the original price cell (only on 'click', not 'mousedown', to avoid double-toggle)
     const expandBtn = target.closest('.sku-list__multiple, [class*="sku-list__expand"], [class*="sku-list__collapse"]');
     if (expandBtn && customCell.contains(expandBtn)) {
-      const row = customCell.closest('.jx-pro-virtual-table__row');
-      if (row) {
-        const priceCell = row.children[colIndexMap.price];
-        const origBtn = priceCell && priceCell.querySelector('.sku-list__multiple, [class*="sku-list__expand"], [class*="sku-list__collapse"]');
-        if (origBtn) {
-          origBtn.click();
-          return;
+      if (e.type === 'click') {
+        const row = customCell.closest('.jx-pro-virtual-table__row');
+        if (row) {
+          const priceCell = row.children[colIndexMap.price];
+          const origBtn = priceCell && priceCell.querySelector('.sku-list__multiple, [class*="sku-list__expand"], [class*="sku-list__collapse"]');
+          if (origBtn) {
+            origBtn.click();
+          }
         }
       }
+      return;
     }
 
     // Resolve the inner element: target might be .sku-list__item-inner or its parent .sku-list__item
