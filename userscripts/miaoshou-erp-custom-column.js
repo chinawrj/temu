@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Miaoshou ERP - Custom Column (clickable toast final)
 // @namespace    https://erp.91miaoshou.com/
-// @version      13.0
+// @version      14.0
 // @description  Add custom column next to "申报价格"; click to fetch USD price from local server and show toast
 // @match        https://erp.91miaoshou.com/pddkj_choice/item/item*
 // @run-at       document-idle
@@ -175,6 +175,8 @@
 
       const newHeader = anchor.cloneNode(true);
       newHeader.innerText = COL_TITLE;
+      newHeader.style.color = '#e53935';
+      newHeader.style.fontWeight = 'bold';
       newHeader.setAttribute(HDR_MARK, '1');
       insertAfter(anchor, newHeader);
       inserted++;
@@ -225,8 +227,12 @@
           const skuId = skuInners[i] ? (skuInners[i].innerText || '').trim() : '';
           if (skuId && priceCache.has(skuId)) {
             inner.innerText = priceCache.get(skuId);
+            inner.style.color = '#1565c0';
+            inner.style.fontWeight = 'bold';
           } else {
             inner.innerText = '—';
+            inner.style.color = '';
+            inner.style.fontWeight = '';
             if (skuId) needsFetch.push(i);
           }
           inner.style.cursor = 'pointer';
@@ -380,6 +386,8 @@
         var priceText = '$' + result.usd_price;
         priceCache.set(sku, priceText);
         clickedInner.textContent = priceText;
+        clickedInner.style.color = '#1565c0';
+        clickedInner.style.fontWeight = 'bold';
       }
     });
   }
