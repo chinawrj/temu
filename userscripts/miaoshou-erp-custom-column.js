@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Miaoshou ERP - Custom Column (clickable toast final)
 // @namespace    https://erp.91miaoshou.com/
-// @version      11.0
+// @version      12.0
 // @description  Add custom column next to "申报价格"; click to fetch USD price from local server and show toast
 // @match        https://erp.91miaoshou.com/pddkj_choice/item/item*
 // @run-at       document-idle
@@ -220,13 +220,14 @@
         // Read SKU IDs from the row to restore cached prices
         const skuCell = row.children[colIndexMap.sku];
         const skuInners = skuCell ? Array.from(skuCell.querySelectorAll('.sku-list__item-inner')) : [];
+        const needsFetch = [];
         inners.forEach((inner, i) => {
           const skuId = skuInners[i] ? (skuInners[i].innerText || '').trim() : '';
           if (skuId && priceCache.has(skuId)) {
             inner.innerText = priceCache.get(skuId);
           } else {
-            const key = (inner.innerText || '') + ':' + i;
-            inner.innerText = stableRandomFromString(key) + '%';
+            inner.innerText = '—';
+            if (skuId) needsFetch.push(i);
           }
           inner.style.cursor = 'pointer';
         });
@@ -237,6 +238,46 @@
           insertAfter(priceRowCell, newCell);
         }
         replacedOrInserted++;
+
+        // Auto-fetch prices for inners without cached values
+        if (needsFetch.length > 0) {
+          const rowCells = row.children || [];
+          const skcCell = rowCells[colIndexMap.skc];
+          const platformCell = rowCells[colIndexMap.platform];
+          const skcInners = skcCell ? Array.from(skcCell.querySelectorAll('.sku-list__item-inner')) : [];
+          const platformInners = platformCell ? Array.from(platformCell.querySelectorAll('.sku-list__item-inner')) : [];
+
+          let productId = '';
+          const infoCell = rowCells[1];
+          if (infoCell) {
+            const spans = infoCell.querySelectorAll('.product-goodInfo-spacing');
+            for (const sp of spans) {
+              const txt = (sp.textContent || '').trim();
+              if (txt.startsWith('产品ID')) {
+                productId = txt.replace(/^产品ID[：:]\s*/, '');
+                break;
+              }
+            }
+          }
+
+          needsFetch.forEach(function(idx) {
+            const skuId = skuInners[idx] ? (skuInners[idx].innerText || '').trim() : '';
+            const skcId = skcInners[idx] ? (skcInners[idx].innerText || '').trim() : '';
+            const platformSku = platformInners[idx] ? (platformInners[idx].innerText || '').trim() : '';
+            if (!skuId) return;
+            // Avoid duplicate in-flight requests
+            if (priceCache.has('_pending_' + skuId)) return;
+            priceCache.set('_pending_' + skuId, true);
+
+            fetchPrice(productId, skcId, skuId, platformSku, function(result) {
+              priceCache.delete('_pending_' + skuId);
+              if (result && !result.error) {
+                var priceText = '$' + result.usd_price;
+                priceCache.set(skuId, priceText);
+              }
+            });
+          });
+        }
       }
     }
     return replacedOrInserted;
